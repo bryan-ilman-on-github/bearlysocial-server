@@ -1,0 +1,33 @@
+# Go Build and Binary Files
+/bin/
+/obj/
+*.test
+*.out
+
+# Workspace Files
+go.work
+go.work.sum
+
+# IDE and Editor Files
+/.vscode/
+/.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+
+# Log Files
+*.log
+
+# Temporary and Backup Files
+*.tmp
+*.bak
+*.csv
+.env
+
+# Coverage Files
+*.png
+
+# Go Mod Files
+go.sum
