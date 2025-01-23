@@ -92,9 +92,10 @@ func runPythonScript(csvFileName, outputImage string) error {
 }
 
 func RunBenchmarks() {
-	const totalRequests = 256
-	const concurrency = 64
-	url := "http://localhost:8080/cpu"
+	const totalRequests = 1024
+	const concurrency = 128
+	const sleep = 256
+	url := "http://localhost:8080/data"
 
 	var wg sync.WaitGroup
 	stat := &stats{}
@@ -106,7 +107,7 @@ func RunBenchmarks() {
 		wg.Add(1)
 		go worker(&wg, url, stat)
 		if i%concurrency == 0 {
-			time.Sleep(2048 * time.Millisecond) // Adjust delay for ramping if needed.
+			time.Sleep(sleep * time.Millisecond) // Adjust delay for ramping if needed.
 		}
 	}
 
@@ -132,7 +133,13 @@ func RunBenchmarks() {
 	}
 	defer file.Close()
 
-	logContent := fmt.Sprintf(`BENCHMARK RESULTS:
+	logContent := fmt.Sprintf(`
+TARGET: %s
+TOTAL REQUESTS: %d
+CONCURRENCY: %d
+SLEEP: %d ms
+
+BENCHMARK RESULTS:
 DATE: %s
 TOTAL REQUESTS: %d
 SUCCESS COUNT: %d
@@ -144,9 +151,12 @@ MIN RESPONSE TIME: %v
 MAX RESPONSE TIME: %v
 
 THROUGHPUT: %.2f REQUESTS/SEC
-`, time.Now().Format("Monday, 02 January 2006 15:04:05"), stat.totalRequests, stat.successCount, stat.failCount, duration,
-		stat.totalDuration/time.Duration(stat.totalRequests), stat.minDuration, stat.maxDuration,
-		float64(stat.totalRequests)/duration.Seconds())
+`, url, totalRequests, concurrency, sleep,
+time.Now().Format("Monday, 02 January 2006 15:04:05"),
+stat.totalRequests, stat.successCount, stat.failCount,
+duration, stat.totalDuration/time.Duration(stat.totalRequests),
+stat.minDuration, stat.maxDuration, float64(stat.totalRequests)/duration.Seconds(),
+)
 
 	_, err = file.WriteString(logContent)
 	if err != nil {
