@@ -2,6 +2,8 @@
 
 !main.go
 
+!/internal/database/mongo.go
+
 !/test/bench/main.go
 !/test/bench/plot_response_times.py
 
