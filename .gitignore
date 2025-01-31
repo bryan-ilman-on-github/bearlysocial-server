@@ -1,33 +1,11 @@
-# Go Build and Binary Files
-/bin/
-/obj/
-*.test
-*.out
+*.*
 
-# Workspace Files
-go.work
-go.work.sum
+!main.go
 
-# IDE and Editor Files
-/.vscode/
-/.idea/
-*.swp
-*.swo
-*.sublime-workspace
-*.sublime-project
-.DS_Store
+!/test/bench/main.go
+!/test/bench/plot_response_times.py
 
-# Log Files
-*.log
+!Golang_Cheatsheet_Zero_To_Mastery_V1.01.pdf
 
-# Temporary and Backup Files
-*.tmp
-*.bak
-*.csv
-.env
-
-# Coverage Files
-*.png
-
-# Go Mod Files
-go.sum
+!go.mod
+!go.sum
