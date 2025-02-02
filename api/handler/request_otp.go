@@ -44,10 +44,10 @@ type UserRequest struct {
 }
 
 var (
-	senderEmail = os.Getenv("SENDER_EMAIL")
-	emailPasskey   = os.Getenv("EMAIL_PASSKEY")
-	smtpHost    = os.Getenv("SMTP_HOST")
-	smtpPort    = os.Getenv("SMTP_PORT")
+	senderEmail string
+	emailPasskey string
+	smtpHost string
+	smtpPort string
 )
 
 // Generates a 6-character alphanumeric OTP (A-Z, 0-9).
@@ -106,6 +106,11 @@ func sendOTP(to, otp string) error {
 
 // Handles OTP requests.
 func RequestOTP(w http.ResponseWriter, r *http.Request) {
+	senderEmail = os.Getenv("SENDER_EMAIL")
+	emailPasskey = os.Getenv("EMAIL_PASSKEY")
+	smtpHost = os.Getenv("SMTP_HOST")
+	smtpPort = os.Getenv("SMTP_PORT")
+
 	if r.Method != http.MethodGet {
 		util.ReturnMessage(w, http.StatusBadRequest, "Method not allowed.")
 		return
@@ -117,8 +122,8 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.TrimSpace(req.EmailAddress)
-	if email == "" {
+	userEmail := strings.TrimSpace(req.EmailAddress)
+	if userEmail == "" {
 		util.ReturnMessage(w, http.StatusBadRequest, "Email address is required.")
 		return
 	}
@@ -136,7 +141,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	var acc UserAccount
 
 	// Define a filter to find the account by email.
-	filter := bson.M{"_id": email}
+	filter := bson.M{"_id": userEmail}
 
 	// Attempt to find the user account in the database.
 	err := util.MongoCollection.FindOne(ctx, filter).Decode(&acc)
@@ -144,7 +149,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	if err == mongo.ErrNoDocuments {
 		// If the account does not exist, create a new one.
 		acc := UserAccount{
-			ID: email,
+			ID: userEmail,
 			OTP: otp,
 			OTP_AttemptCount: 0,
 			OTP_ExpiryTime: now.Add(8 * time.Minute).UnixMilli(),
@@ -205,7 +210,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the OTP to the user's email.
-	if err := sendOTP(email, otp); err != nil {
+	if err := sendOTP(userEmail, otp); err != nil {
 		log.Printf("ERROR SENDING EMAIL: %v\n", err)
 		util.ReturnMessage(w, http.StatusInternalServerError, "Failed to send OTP email.")
 		return
