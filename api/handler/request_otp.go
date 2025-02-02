@@ -12,35 +12,31 @@ import (
 	"strings"
 	"time"
 
-	"bearlysocial-backend/util"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"bearlysocial-backend/api/model"
+	"bearlysocial-backend/util"
 )
 
 // Represents the user account structure in MongoDB with snake_case fields.
 type UserAccount struct {
 	ID string `bson:"_id"`
-	OTP string `bson:"otp"`
+	OTP *string `bson:"otp"`
 	OTP_AttemptCount int `bson:"otp_attempt_count"`
 	OTP_ExpiryTime int64 `bson:"otp_expiry_time"`
-	CooldownTime *int64 `bson:"cooldown_time"`
+	CooldownTime int64 `bson:"cooldown_time"`
 	CreatedAt time.Time `bson:"created_at"`
 	Token int `bson:"token"`
-	FirstName *string `bson:"first_name"`
-	LastName *string `bson:"last_name"`
+	FirstName string `bson:"first_name"`
+	LastName string `bson:"last_name"`
 	Interests []string `bson:"interests"`
 	Langs []string `bson:"langs"`
-	InstaHandler *string `bson:"insta_handler"`
-	FB_Handler *string `bson:"fb_handler"`
-	LinkedinHandler *string `bson:"linkedin_handler"`
-	Mood *string `bson:"mood"`
+	InstaHandler string `bson:"insta_handler"`
+	FB_Handler string `bson:"fb_handler"`
+	LinkedinHandler string `bson:"linkedin_handler"`
+	Mood string `bson:"mood"`
 	Schedule bson.M `bson:"schedule"`
-}
-
-// Represents the incoming request structure.
-type UserRequest struct {
-	EmailAddress string `json:"email_address"`
 }
 
 var (
@@ -104,7 +100,7 @@ func sendOTP(to, otp string) error {
 	)
 }
 
-// Handles OTP requests.
+// Handles OTP request.
 func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	senderEmail = os.Getenv("SENDER_EMAIL")
 	emailPasskey = os.Getenv("EMAIL_PASSKEY")
@@ -116,22 +112,23 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req UserRequest
+	// Parse request body.
+	var req model.RequestOTP
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.ReturnMessage(w, http.StatusBadRequest, "Invalid request body.")
 		return
 	}
 
 	userEmail := strings.TrimSpace(req.EmailAddress)
-	if userEmail == "" {
-		util.ReturnMessage(w, http.StatusBadRequest, "Email address is required.")
+	if !util.ValidEmail(userEmail) {
+		util.ReturnMessage(w, http.StatusBadRequest, "Invalid email format.")
 		return
 	}
 
 	otp := generateOTP()
 
 	// Create a context with a timeout to prevent long-running database operations.
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 8 * time.Second)
 	defer cancel()
 
 	now := time.Now()
@@ -150,7 +147,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		// If the account does not exist, create a new one.
 		acc := UserAccount{
 			ID: userEmail,
-			OTP: otp,
+			OTP: &otp,
 			OTP_AttemptCount: 0,
 			OTP_ExpiryTime: now.Add(8 * time.Minute).UnixMilli(),
 			CreatedAt: now,
@@ -183,7 +180,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// If the user exceeded OTP attempts, check if the cooldown period has expired.
-			if *acc.CooldownTime <= currentTimeMillis {
+			if acc.CooldownTime <= currentTimeMillis {
 				update := bson.M{
 					"$set": bson.M{
 						"otp": otp,
@@ -199,7 +196,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				// If still in cooldown, calculate the remaining time before retry is allowed.
-				cooldownTime := time.UnixMilli(*acc.CooldownTime)
+				cooldownTime := time.UnixMilli(acc.CooldownTime)
 				remainingTime := time.Until(cooldownTime)
 				message := fmt.Sprintf("Please wait %s before trying again.", util.HumanReadableDuration(remainingTime))
 
