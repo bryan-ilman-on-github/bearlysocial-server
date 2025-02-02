@@ -6,19 +6,26 @@ import (
 	"net/http"
 	"os"
 
-	"bearlysocial-backend/internal/database"
+	"bearlysocial-backend/api/handler"
+	"bearlysocial-backend/util"
 )
 
 func main() {
+	// Initialize environment.
+	util.LoadEnv()
+
 	// Initialize MongoDB.
-	database.InitMongoDB()
+	util.InitMongoDB()
 	defer func() {
-		if database.MongoClient != nil {
-			if err := database.MongoClient.Disconnect(context.Background()); err != nil {
+		if util.MongoClient != nil {
+			if err := util.MongoClient.Disconnect(context.Background()); err != nil {
 				fmt.Println("ERROR DISCONNECTING FROM MongoDB:", err)
 			}
 		}
 	}()
+
+	// Set up routing.
+	http.HandleFunc("/request-otp", handler.RequestOTP)
 
 	// Start server.
 	port := os.Getenv("PORT")
@@ -28,7 +35,6 @@ func main() {
 
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%s", port),
-		// Add your handlers or router here.
 	}
 
 	fmt.Printf("Starting server on port %s.\n", port)

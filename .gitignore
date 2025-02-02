@@ -1,13 +1,59 @@
-*.*
+# Binaries and build artifacts.
+/bin/
+/pkg/
+/out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.o
+*.a
 
-!main.go
+# Dependency directories (for vendoring).
+vendor/
 
-!/internal/database/mongo.go
+# IDE/editor settings.
+.vscode/
+.idea/
+*.swp
+*.swo
 
-!/test/bench/main.go
-!/test/bench/plot_response_times.py
+# Logs and temp files.
+/log
+*.log
+*.tmp
+*.temp
+*.bak
+*.pid
+*.seed
+*.old
 
-!Golang_Cheatsheet_Zero_To_Mastery_V1.01.pdf
+# Environment files.
+.env
+.env.local
+.env.*.local
 
-!go.mod
-!go.sum
+# Go-specific files.
+/go.sum
+/go.work
+/go.work.sum
+
+# Node-related (if using frontend in the same repo).
+node_modules/
+*.tsbuildinfo
+
+# Coverage reports.
+*.coverprofile
+*.coverage
+coverage.out
+
+# Cache and debugging.
+*.cache
+debug/
+trace.out
+pprof/
+
+# Docker.
+docker-compose.override.yml
