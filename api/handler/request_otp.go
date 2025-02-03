@@ -21,22 +21,22 @@ import (
 
 // Represents the user account structure in MongoDB with snake_case fields.
 type UserAccount struct {
-	ID string `bson:"_id"`
-	OTP *string `bson:"otp"`
-	OTP_AttemptCount int `bson:"otp_attempt_count"`
-	OTP_ExpiryTime int64 `bson:"otp_expiry_time"`
-	CooldownTime int64 `bson:"cooldown_time"`
-	CreatedAt time.Time `bson:"created_at"`
-	Token int `bson:"token"`
-	FirstName string `bson:"first_name"`
-	LastName string `bson:"last_name"`
-	Interests []string `bson:"interests"`
-	Langs []string `bson:"langs"`
-	InstaHandler string `bson:"insta_handler"`
-	FB_Handler string `bson:"fb_handler"`
-	LinkedinHandler string `bson:"linkedin_handler"`
-	Mood string `bson:"mood"`
-	Schedule bson.M `bson:"schedule"`
+	ID string `bson:"_id" json:"uid"`
+	OTP *string `bson:"otp" json:"otp"`
+	OTP_AttemptCount int `bson:"otp_attempt_count" json:"otp_attempt_count"`
+	OTP_ExpiryTime *int64 `bson:"otp_expiry_time" json:"otp_expiry_time"`
+	CooldownTime *int64 `bson:"cooldown_time" json:"cooldown_time"`
+	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+	Token *string `bson:"token" json:"token"`
+	FirstName string `bson:"first_name" json:"first_name"`
+	LastName string `bson:"last_name" json:"last_name"`
+	Interests []string `bson:"interests" json:"interests"`
+	Langs []string `bson:"langs" json:"langs"`
+	InstaHandler string `bson:"insta_handler" json:"insta_handler"`
+	FB_Handler string `bson:"fb_handler" json:"fb_handler"`
+	LinkedinHandler string `bson:"linkedin_handler" json:"linkedin_handler"`
+	Mood string `bson:"mood" json:"mood"`
+	Schedule bson.M `bson:"schedule" json:"schedule"`
 }
 
 var (
@@ -115,7 +115,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	// Parse request body.
 	var req model.RequestOTP
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.ReturnMessage(w, http.StatusBadRequest, "Invalid request body.")
+		util.ReturnMessage(w, http.StatusBadRequest, "Invalid request format.")
 		return
 	}
 
@@ -149,7 +149,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 			ID: userEmail,
 			OTP: &otp,
 			OTP_AttemptCount: 0,
-			OTP_ExpiryTime: now.Add(8 * time.Minute).UnixMilli(),
+			OTP_ExpiryTime: util.RefInt64(now.Add(8 * time.Minute).UnixMilli()),
 			CreatedAt: now,
 			Schedule: bson.M{},
 		}
@@ -162,6 +162,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if err != nil {
 		// Handle any other database errors.
+		log.Printf("DATABASE ERROR: %v\n", err)
 		util.ReturnMessage(w, http.StatusInternalServerError, "Database error.")
 		return
 	} else {
@@ -180,7 +181,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// If the user exceeded OTP attempts, check if the cooldown period has expired.
-			if acc.CooldownTime <= currentTimeMillis {
+			if *acc.CooldownTime <= currentTimeMillis {
 				update := bson.M{
 					"$set": bson.M{
 						"otp": otp,
@@ -196,7 +197,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				// If still in cooldown, calculate the remaining time before retry is allowed.
-				cooldownTime := time.UnixMilli(acc.CooldownTime)
+				cooldownTime := time.UnixMilli(*acc.CooldownTime)
 				remainingTime := time.Until(cooldownTime)
 				message := fmt.Sprintf("Please wait %s before trying again.", util.HumanReadableDuration(remainingTime))
 

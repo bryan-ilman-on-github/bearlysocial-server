@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -18,33 +19,17 @@ import (
 	"bearlysocial-backend/util"
 )
 
-// Represents the successful OTP validation response.
-type UserResponse struct {
-	ID string `json:"id"`
-	Token string `json:"token"`
-	FirstName *string `json:"first_name"`
-	LastName *string `json:"last_name"`
-	Interests []string `json:"interests"`
-	Langs []string `json:"langs"`
-	InstaHandler *string `json:"insta_handler"`
-	FB_Handler *string `json:"fb_handler"`
-	LinkedinHandler *string `json:"linkedin_handler"`
-	Mood *string `json:"mood"`
-	Schedule bson.M `json:"schedule"`
-}
-
 // Creates a secure random token using crypto/rand.
 func generateToken() (string, error) {
 	b := make([]byte, 32)
 
-	// Fill the byte slice with cryptographically secure random bytes.
+	// Fill the byte slice with cryptographically random bytes.
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
 
-	// Create a new SHA-256 hash instance.
+	// Create a new SHA-256 hash instance with random bytes written into the hash function.
 	hasher := sha256.New()
-	// Write the random bytes into the hash function.
 	hasher.Write(b)
 
 	// Compute the hash and return its hexadecimal representation.
@@ -92,23 +77,25 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		// Handle any other database errors.
+		log.Printf("DATABASE ERROR: %v\n", err)
 		util.ReturnMessage(w, http.StatusInternalServerError, "Database error.")
 		return
 	}
 
 	currentTime := time.Now().UnixMilli()
 	if acc.OTP_AttemptCount < 4 {
-		if currentTime > acc.OTP_ExpiryTime {
+		if currentTime > *acc.OTP_ExpiryTime {
 			util.ReturnMessage(w, http.StatusBadRequest, "Your OTP has expired.")
 			return
 		} else {
 			if strings.EqualFold(*acc.OTP, req.OTP) {
 				token, err := generateToken()
 				if err != nil {
-					util.ReturnMessage(w, http.StatusInternalServerError, "Failed to generate security token.")
+					util.ReturnMessage(w, http.StatusInternalServerError, "Failed to generate token.")
 					return
 				}
 
+				// Update the database by resetting OTP fields and setting the new token.
 				update := bson.M{
 					"$set": bson.M{
 						"token": token,
@@ -125,14 +112,19 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				// Prepare response
-				response := UserResponse{
-				}
+				// Setting fields to reflect the update in the response after successful verification.
+				acc.OTP = nil
+				acc.OTP_AttemptCount = 0
+				acc.OTP_ExpiryTime = nil
+				acc.CooldownTime = nil
+				acc.Token = &token
 
+				// Return a success response with the updated user data.
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(response)
+				json.NewEncoder(w).Encode(acc)
 			} else {
+				// If the OTP is incorrect, increment the attempt count.
 				update := bson.M{
 					"$inc": bson.M{"otp_attempt_count": 1},
 				}
@@ -140,6 +132,9 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 
 				if acc.OTP_AttemptCount + 1 >= 4 {
 					cooldownTime := time.Now().Add(1 * time.Hour).UnixMilli()
+					msg = "Too many failed attempts. Please request a new OTP in an hour."
+
+					// Update the account with cooldown information and clear OTP fields.
 					update["$set"] = bson.M{
 						"cooldown_time":   cooldownTime,
 						"otp":             nil,
@@ -160,7 +155,7 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		remaining := time.UnixMilli(acc.CooldownTime).Sub(time.Now())
+		remaining := time.Until(time.UnixMilli(*acc.CooldownTime))
 
 		// Construct message based on remaining time.
 		msg := "Please request a new OTP."

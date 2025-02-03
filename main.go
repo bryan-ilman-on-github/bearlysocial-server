@@ -26,6 +26,7 @@ func main() {
 
 	// Set up routing.
 	http.HandleFunc("/request-otp", handler.RequestOTP)
+	http.HandleFunc("/validate-otp", handler.ValidateOTP)
 
 	// Start server.
 	port := os.Getenv("PORT")
