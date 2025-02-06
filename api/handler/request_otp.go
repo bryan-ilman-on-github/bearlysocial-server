@@ -119,7 +119,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userEmail := strings.TrimSpace(req.EmailAddress)
+	userEmail := strings.ToLower(strings.TrimSpace(req.EmailAddress))
 	if !util.ValidEmail(userEmail) {
 		util.ReturnMessage(w, http.StatusBadRequest, "Invalid email format.")
 		return

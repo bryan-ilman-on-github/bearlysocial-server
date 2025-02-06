@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"bearlysocial-backend/api/handler"
+	"bearlysocial-backend/api/middleware"
 	"bearlysocial-backend/util"
 )
 
@@ -24,9 +25,16 @@ func main() {
 		}
 	}()
 
-	// Set up routing.
+	// Public endpoints for requesting and validating one-time passwords.
 	http.HandleFunc("/request-otp", handler.RequestOTP)
 	http.HandleFunc("/validate-otp", handler.ValidateOTP)
+
+	// Protected endpoints that require a valid token for access.
+	http.Handle("/validate-session", middleware.ValidateToken(http.HandlerFunc(handler.UpdateSession)))
+	// Others...
+
+	// Benchmark endpoint for performance testing and diagnostics.
+	// http.HandleFunc("/benchmark", handler.Benchmark)
 
 	// Start server.
 	port := os.Getenv("PORT")

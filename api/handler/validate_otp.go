@@ -2,9 +2,6 @@ package handler
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,23 +15,6 @@ import (
 	"bearlysocial-backend/api/model"
 	"bearlysocial-backend/util"
 )
-
-// Creates a secure random token using crypto/rand.
-func generateToken() (string, error) {
-	b := make([]byte, 32)
-
-	// Fill the byte slice with cryptographically random bytes.
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-
-	// Create a new SHA-256 hash instance with random bytes written into the hash function.
-	hasher := sha256.New()
-	hasher.Write(b)
-
-	// Compute the hash and return its hexadecimal representation.
-	return hex.EncodeToString(hasher.Sum(nil)), nil
-}
 
 // Handles OTP validation.
 func ValidateOTP(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +30,7 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userEmail := strings.TrimSpace(req.EmailAddress)
+	userEmail := strings.ToLower(strings.TrimSpace(req.EmailAddress))
 	userOTP := strings.TrimSpace(req.OTP)
 	if !util.ValidEmail(userEmail) || !util.ValidOTP(userOTP) {
 		util.ReturnMessage(w, http.StatusBadRequest, "Invalid email or OTP format.")
@@ -89,7 +69,7 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			if strings.EqualFold(*acc.OTP, req.OTP) {
-				token, err := generateToken()
+				token, err := util.GenerateToken(acc.ID)
 				if err != nil {
 					util.ReturnMessage(w, http.StatusInternalServerError, "Failed to generate token.")
 					return
