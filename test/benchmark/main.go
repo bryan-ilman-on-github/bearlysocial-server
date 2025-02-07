@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -88,12 +87,12 @@ func saveResponseTimes(responseTimes []int64, fileName string) error {
 	return nil
 }
 
-func runPythonScript(csvFileName, outputImage string) error {
-	cmd := exec.Command("py", "./test/bench/plot_response_times.py", csvFileName, outputImage) // Use "py" for Windows.
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
+// func runPythonScript(csvFileName, outputImage string) error {
+// 	cmd := exec.Command("py", "./test/bench/plot_response_times.py", csvFileName, outputImage) // Use "py" for Windows.
+// 	cmd.Stdout = os.Stdout
+// 	cmd.Stderr = os.Stderr
+// 	return cmd.Run()
+// }
 
 // ensureLogDir ensures the "log" directory exists. If not, it creates it.
 func ensureLogDir() error {
@@ -154,11 +153,13 @@ func promptString(prompt, defaultValue string) string {
 }
 
 func main() {
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+
 	// Define default values.
 	const defaultTotalRequests = 1024
 	const defaultConcurrency = 128
 	const defaultSleepDuration = 256
-	defaultURL := "http://localhost:8080/data"
+	defaultURL := "http://localhost:80/benchmark"
 
 	// Define flags for automatic defaults.
 	autoYes := flag.Bool("yes", false, "use default values (long)")
@@ -208,14 +209,13 @@ func main() {
 	}
 
 	// Save response times to a CSV file.
-	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	csvFileName := fmt.Sprintf("log/response_time_table-%s.csv", timestamp)
-	err := saveResponseTimes(stat.responseTimes, csvFileName)
-	if err != nil {
-		fmt.Println("FAILED TO SAVE RESPONSE TIMES:", err)
-		return
-	}
-	fmt.Println("RESPONSE TIMES SAVED TO:", csvFileName)
+	// csvFileName := fmt.Sprintf("log/response_time_table-%s.csv", timestamp)
+	// err := saveResponseTimes(stat.responseTimes, csvFileName)
+	// if err != nil {
+	// 	fmt.Println("FAILED TO SAVE RESPONSE TIMES:", err)
+	// 	return
+	// }
+	// fmt.Println("RESPONSE TIMES SAVED TO:", csvFileName)
 
 	// Log benchmark results.
 	logFileName := fmt.Sprintf("log/benchmark_results-%s.log", timestamp)
@@ -259,13 +259,13 @@ stat.minDuration, stat.maxDuration, float64(stat.totalRequests)/duration.Seconds
 
 	fmt.Println("BENCHMARK RESULTS SAVED TO:", logFileName)
 
-	// Run Python script to generate the graph.
-	outputImage := fmt.Sprintf("log/response_time_graph-%s.png", timestamp)
-	err = runPythonScript(csvFileName, outputImage)
-	if err != nil {
-		fmt.Println("FAILED TO RUN PYTHON SCRIPT:", err)
-		return
-	}
+	// // Run Python script to generate the graph.
+	// outputImage := fmt.Sprintf("log/response_time_graph-%s.png", timestamp)
+	// err = runPythonScript(csvFileName, outputImage)
+	// if err != nil {
+	// 	fmt.Println("FAILED TO RUN PYTHON SCRIPT:", err)
+	// 	return
+	// }
 
-	fmt.Println("RESPONSE TIME DISTRIBUTION GRAPH SAVED TO:", outputImage)
+	// fmt.Println("RESPONSE TIME DISTRIBUTION GRAPH SAVED TO:", outputImage)
 }

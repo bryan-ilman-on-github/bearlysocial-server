@@ -34,7 +34,7 @@ func main() {
 	// Others...
 
 	// Benchmark endpoint for performance testing and diagnostics.
-	// http.HandleFunc("/benchmark", handler.Benchmark)
+	http.HandleFunc("/benchmark", handler.Benchmark)
 
 	// Start server.
 	port := os.Getenv("PORT")
