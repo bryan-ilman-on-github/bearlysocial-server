@@ -42,15 +42,15 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Define a variable to store the retrieved user account.
-	var acc UserAccount
+	var user_acc model.UserAccount
 
 	// Define a filter to find the account by email.
 	filter := bson.M{"_id": userEmail}
 
 	// Attempt to find the user account in the database.
-	err := util.MongoCollection.FindOne(ctx, filter).Decode(&acc)
+	err := util.MongoCollection.FindOne(ctx, filter).Decode(&user_acc)
 
-	if err == mongo.ErrNoDocuments || acc.OTP == nil {
+	if err == mongo.ErrNoDocuments || user_acc.OTP == nil {
 		// If user not found or missing OTP, ask the user to request an OTP first.
 		util.ReturnMessage(w, http.StatusBadRequest, "Please request an OTP first.")
 		return
@@ -63,13 +63,13 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentTime := time.Now().UnixMilli()
-	if acc.OTP_AttemptCount < 4 {
-		if currentTime > *acc.OTP_ExpiryTime {
+	if user_acc.OTP_AttemptCount < 4 {
+		if currentTime > *user_acc.OTP_ExpiryTime {
 			util.ReturnMessage(w, http.StatusBadRequest, "Your OTP has expired.")
 			return
 		} else {
-			if strings.EqualFold(*acc.OTP, req.OTP) {
-				token, err := util.GenerateToken(acc.ID)
+			if strings.EqualFold(*user_acc.OTP, req.OTP) {
+				token, err := util.GenerateToken(user_acc.ID)
 				if err != nil {
 					util.ReturnMessage(w, http.StatusInternalServerError, "Failed to generate token.")
 					return
@@ -93,16 +93,16 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// Setting fields to reflect the update in the response after successful verification.
-				acc.OTP = nil
-				acc.OTP_AttemptCount = 0
-				acc.OTP_ExpiryTime = nil
-				acc.CooldownTime = nil
-				acc.Token = &token
+				user_acc.OTP = nil
+				user_acc.OTP_AttemptCount = 0
+				user_acc.OTP_ExpiryTime = nil
+				user_acc.CooldownTime = nil
+				user_acc.Token = &token
 
 				// Return a success response with the updated user data.
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(acc)
+				json.NewEncoder(w).Encode(user_acc)
 			} else {
 				// If the OTP is incorrect, increment the attempt count.
 				update := bson.M{
@@ -110,7 +110,7 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 				}
 				var msg string
 
-				if acc.OTP_AttemptCount + 1 >= 4 {
+				if user_acc.OTP_AttemptCount + 1 >= 4 {
 					cooldownTime := time.Now().Add(1 * time.Hour).UnixMilli()
 					msg = "Too many failed attempts. Please request a new OTP in an hour."
 
@@ -135,7 +135,7 @@ func ValidateOTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		remaining := time.Until(time.UnixMilli(*acc.CooldownTime))
+		remaining := time.Until(time.UnixMilli(*user_acc.CooldownTime))
 
 		// Construct message based on remaining time.
 		msg := "Please request a new OTP."

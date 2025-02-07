@@ -10,20 +10,25 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"bearlysocial-backend/api/handler"
+	"bearlysocial-backend/api/model"
 	"bearlysocial-backend/util"
 )
 
 // Define a key type to avoid context key collisions.
 type contextKey string
-const userKey contextKey = "user"
+const USER_ACCOUNT contextKey = "user_acc"
 
 // Verifies the token and injects user data into the request context.
 func ValidateToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			util.ReturnMessage(w, http.StatusBadRequest, "Method not allowed.")
+			return
+		}
+	
 		// Extract token from Authorization header.
-		token := r.Header.Get("Authorization")
-		if !util.ValidToken(token) {
+		reqToken := r.Header.Get("Authorization")
+		if !util.ValidToken(reqToken) {
 			util.ReturnMessage(w, http.StatusUnauthorized, "Missing authorization header.")
 			return
 		}
@@ -32,16 +37,16 @@ func ValidateToken(next http.Handler) http.Handler {
 		ctx, cancel := context.WithTimeout(context.Background(), 8 * time.Second)
 		defer cancel()
 
-		uid := strings.Split(strings.ToLower(token), "::")[0]
+		uid := strings.Split(strings.ToLower(reqToken), "::")[0]
 
 		// Define a variable to store the retrieved user account.
-		var acc handler.UserAccount
+		var user_acc model.UserAccount
 
 		// Define a filter to find the account by uid (email).
 		filter := bson.M{"_id": uid}
 
 		// Attempt to find the user account in the database.
-		err := util.MongoCollection.FindOne(ctx, filter).Decode(&acc)
+		err := util.MongoCollection.FindOne(ctx, filter).Decode(&user_acc)
 
 		if err != nil {
 			if err == mongo.ErrNoDocuments {
@@ -54,7 +59,7 @@ func ValidateToken(next http.Handler) http.Handler {
 		}
 
 		// Validate the provided token.
-		if token != *acc.Token {
+		if reqToken != *user_acc.Token {
 			util.ReturnMessage(w, http.StatusUnauthorized, "Invalid token.")
 			return
 		}
@@ -65,10 +70,10 @@ func ValidateToken(next http.Handler) http.Handler {
 			util.ReturnMessage(w, http.StatusInternalServerError, "Server error while generating token.")
 			return
 		}
-		acc.Token = &updateToken
+		user_acc.Token = &updateToken
 		
 		// Inject user data into request context and call next handler.
-		ctx = context.WithValue(r.Context(), userKey, acc)
+		ctx = context.WithValue(r.Context(), USER_ACCOUNT, user_acc)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

@@ -30,7 +30,7 @@ func main() {
 	http.HandleFunc("/validate-otp", handler.ValidateOTP)
 
 	// Protected endpoints that require a valid token for access.
-	http.Handle("/validate-session", middleware.ValidateToken(http.HandlerFunc(handler.UpdateSession)))
+	http.Handle("/update-session", middleware.ValidateToken(http.HandlerFunc(handler.UpdateSession)))
 	// Others...
 
 	// Benchmark endpoint for performance testing and diagnostics.

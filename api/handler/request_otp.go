@@ -19,26 +19,6 @@ import (
 	"bearlysocial-backend/util"
 )
 
-// Represents the user account structure in MongoDB with snake_case fields.
-type UserAccount struct {
-	ID string `bson:"_id" json:"uid"`
-	OTP *string `bson:"otp" json:"otp"`
-	OTP_AttemptCount int `bson:"otp_attempt_count" json:"otp_attempt_count"`
-	OTP_ExpiryTime *int64 `bson:"otp_expiry_time" json:"otp_expiry_time"`
-	CooldownTime *int64 `bson:"cooldown_time" json:"cooldown_time"`
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-	Token *string `bson:"token" json:"token"`
-	FirstName string `bson:"first_name" json:"first_name"`
-	LastName string `bson:"last_name" json:"last_name"`
-	Interests []string `bson:"interests" json:"interests"`
-	Langs []string `bson:"langs" json:"langs"`
-	InstaHandler string `bson:"insta_handler" json:"insta_handler"`
-	FB_Handler string `bson:"fb_handler" json:"fb_handler"`
-	LinkedinHandler string `bson:"linkedin_handler" json:"linkedin_handler"`
-	Mood string `bson:"mood" json:"mood"`
-	Schedule bson.M `bson:"schedule" json:"schedule"`
-}
-
 var (
 	senderEmail string
 	emailPasskey string
@@ -135,17 +115,17 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 	currentTimeMillis := now.UnixMilli()
 
 	// Define a variable to store the retrieved user account.
-	var acc UserAccount
+	var user_acc model.UserAccount
 
 	// Define a filter to find the account by email.
 	filter := bson.M{"_id": userEmail}
 
 	// Attempt to find the user account in the database.
-	err := util.MongoCollection.FindOne(ctx, filter).Decode(&acc)
+	err := util.MongoCollection.FindOne(ctx, filter).Decode(&user_acc)
 
 	if err == mongo.ErrNoDocuments {
 		// If the account does not exist, create a new one.
-		acc := UserAccount{
+		user_acc := model.UserAccount{
 			ID: userEmail,
 			OTP: &otp,
 			OTP_AttemptCount: 0,
@@ -155,7 +135,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Insert the new account into the database.
-		_, err = util.MongoCollection.InsertOne(ctx, acc)
+		_, err = util.MongoCollection.InsertOne(ctx, user_acc)
 		if err != nil {
 			util.ReturnMessage(w, http.StatusInternalServerError, "Failed to create account.")
 			return
@@ -167,7 +147,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		// If the account exists and the user has attempted OTP requests less than 4 times.
-		if acc.OTP_AttemptCount < 4 {
+		if user_acc.OTP_AttemptCount < 4 {
 			update := bson.M{
 				"$set": bson.M{
 					"otp": otp,
@@ -181,7 +161,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// If the user exceeded OTP attempts, check if the cooldown period has expired.
-			if *acc.CooldownTime <= currentTimeMillis {
+			if *user_acc.CooldownTime <= currentTimeMillis {
 				update := bson.M{
 					"$set": bson.M{
 						"otp": otp,
@@ -197,7 +177,7 @@ func RequestOTP(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				// If still in cooldown, calculate the remaining time before retry is allowed.
-				cooldownTime := time.UnixMilli(*acc.CooldownTime)
+				cooldownTime := time.UnixMilli(*user_acc.CooldownTime)
 				remainingTime := time.Until(cooldownTime)
 				message := fmt.Sprintf("Please wait %s before trying again.", util.HumanReadableDuration(remainingTime))
 
