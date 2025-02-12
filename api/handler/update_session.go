@@ -14,6 +14,11 @@ import (
 
 // Handles session update.
 func UpdateSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		util.ReturnMessage(w, http.StatusBadRequest, "Method not allowed.")
+		return
+	}
+
 	// Retrieve user data from context.
 	user_acc, ok := r.Context().Value(middleware.USER_ACCOUNT).(model.UserAccount)
 	if !ok {

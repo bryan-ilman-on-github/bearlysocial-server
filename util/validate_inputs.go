@@ -6,7 +6,7 @@ import (
 )
 
 func ValidEmail(email string) bool {
-	email = strings.TrimSpace(email) // Trim spaces
+	email = strings.TrimSpace(email) // Trim spaces.
 	pattern := `^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`
 	re := regexp.MustCompile(pattern)
 	return re.MatchString(email)
