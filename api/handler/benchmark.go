@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"time"
@@ -42,6 +41,5 @@ func Benchmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, "Benchmark successful.")
 	w.WriteHeader(http.StatusOK)
 }
